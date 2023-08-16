@@ -3,7 +3,9 @@ This code was elaborated as master thesis project to create an stream flow routi
 
 
 References
+
 For the elaboration of this code the following packages are crucial for the development
+
 SFRmaker
 Citation for SFRmaker
 Leaf, A.T., Fienen, M.N. and Reeves, H.W. (2021), SFRmaker and Linesink-Maker: Rapid Construction of Streamflow Routing Networks from Hydrography Data. Groundwater, 59: 761-771. https://doi.org/10.1111/gwat.13095
