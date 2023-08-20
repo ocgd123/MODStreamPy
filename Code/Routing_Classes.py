@@ -54,7 +54,53 @@ def write_pvd (pvd_filename='test.pvd',ts_name_dict=dict()):
     outFile.close()
 
 class reach_Section:
+    """
+    Represents a river reach section with various attributes and calculated variables.
     
+    Parameters:
+        reach_Name (str): The name of the reach.
+        slope (float): The slope of the river reach.
+        reach_id (int): The identifier of the reach.
+        reach_cell: The cell assigned to the reach in the grid.
+        manning (float): Manning's roughness coefficient for the reach.
+        cross_section (str): The type of cross-section geometry, e.g., "rectangle".
+        up_elev (float): The elevation at the upstream end of the reach.
+        down_elev (float): The elevation at the downstream end of the reach.
+        thickness (float): The thickness of the river section.
+        length (float): The length of the river reach.
+        conductivity (float): Conductivity of the river bed.
+        rbd_elev (float): Elevation of the river bed.
+        surface_top (float): Elevation of the groundwater surface.
+        conductivity_aquifer (float): Conductivity of the aquifer.
+        width (float): Width of the river section (for rectangular cross-sections).
+        diversions (list, optional): List of diversion nodes if the reach has diversions.
+    
+    Attributes:
+        is_in_boundary (bool): Whether the reach is within a head boundary.
+        is_boundary (bool): Whether the reach is a boundary reach where there is inflow.
+        rbot (float): Elevation of the bottom of the river bed.
+        in_reaches (list): List of incoming reach sections.
+        out_reaches (list): List of outgoing reach sections.
+        cv_max (float): Maximum cross-sectional area when river stage is known.
+        qin (list): List of inflow values.
+        hriv (float): River water depth.
+        hgw (float): Groundwater head.
+        qout (float): Outflow value.
+        qgwf (float): Leakage flow value.
+        conductance (float): Conductance of the reach.
+        diversion_reaches (list): List of diversion reach sections.
+        diversion_flow (list): List of diversion flow values.
+    
+    Methods:
+        add_diversions(self, diversion): Add diversion nodes and flows to the reach.
+        get_Number_Tributaries(): Get the number of tributary reaches.
+        get_Number_Inflows(): Get the number of inflows to the reach.
+    
+    Raises:
+        Exception: If required variables are missing or mismatching in diversions.
+        Warning: If the reach doesn't have an assigned grid cell.
+    """
+        
     def __init__(self, reach_Name,slope, reach_id,reach_cell,manning, 
                  cross_section, up_elev, down_elev, thickness, length,
                  conductivity,rbd_elev,surface_top, conductivity_aquifer,width, diversions= []):
@@ -143,17 +189,67 @@ class reach_Section:
             
             
         def add_diversions(self,diversion):
+            """
+            Add diversion nodes and flows to the reach.
+            
+            Parameters:
+                diversion (list): List containing diversion information.
+            
+            Returns:
+                None
+            """
+                        
             self.is_Diversion = True
             diversion[0]
             
         def get_Number_Tributaries():
+            """
+            Get the number of tributary reaches.
+            
+            Returns:
+                int: Number of tributary reaches.
+            """
             return len(self.tributaries)
         
         def get_Number_Inflows():
+            """
+            Get the number of inflows to the reach.
+    
+            Returns:
+                int: Number of inflows to the reach.
+            """
             return len(self.qin)
         
             
 class river_Network:
+    
+    """
+    Represents a network of river reaches with attributes for managing flows and calculations.
+    
+    Attributes:
+        reaches (dict): Dictionary containing reach identifiers as keys and reach_Section objects as values.
+        solved_path (list): List of solved path elements in the network.
+        rsme_hriv (float): Root Mean Squared Error for river stage height.
+        rsme_hgw (float): Root Mean Squared Error for groundwater head.
+        rsme_qout (float): Root Mean Squared Error for outflow values.
+        rsme_qgwf (float): Root Mean Squared Error for groundwater flow values.
+        qin_total (float): Total inflow from boundaries.
+        qout_total (float): Total outflow to boundaries.
+        leak_total (float): Total groundwater leakage.
+    
+    Methods:
+        create_Network(self, ...): Creates a river network based on provided data.
+        add_River_flows(self, reach_id, q, h): Adds river flows to the network.
+        restart_Network(self):         Restarts the network by storing previous iteration variables and setting
+        the inlet of the reaches that are no boundaries to 0.
+        update_gw_Heads(self, sim, modflow_time): Updates groundwater heads in the network.
+        calculate_RSME(self): Calculates Root Mean Squared Errors for various variables.
+        calculate_Water_Balance(self): Calculates total inflow, leakge and outflow for water balance.
+        add_Boundaries(self, inflow_dict): Adds inflow boundaries to the network.
+        add_Reach_in_Boundaries(self, boundary_cells): Flags reaches within boundary cells.
+    
+    """
+    
     
     def __init__(self):
         self.reaches = {}
@@ -174,6 +270,18 @@ class river_Network:
                        thick_list,conductivity_list,rbd_elev_list,
                        top_elev_list, conductivity_aquifer_list,width_list,
                        diversion_df = pd.DataFrame()):
+        """
+        Creates a river network based on provided data.
+        
+        Parameters:
+            name_list (list): List of reach names.
+            slope_list (list): List of reach slopes.
+            reach_id_list (list): List of reach identifiers.
+            ... (other parameters)
+        
+        Returns:
+            None
+        """
         
         for i in range(0,len(name_list)):
             
@@ -208,7 +316,17 @@ class river_Network:
 
 
     def add_River_flows(self, reach_id, q, h):
+        """
+        Adds river flows to the network.
         
+        Parameters:
+            reach_id (int): Identifier of the reach.
+            q (float): Flow value.
+            h (float): River stage height.
+        
+        Returns:
+            None
+        """
         if self.reaches[reach_id].is_Diversion == False:
             
             self.reaches[reach_id].qout = q
@@ -239,7 +357,13 @@ class river_Network:
                 self.reaches[out_reach].qin.append(out_flow)
             
     def restart_Network(self):
-        
+        """
+        Restarts the network by storing previous iteration variables and setting
+        the inlet of the reaches that are no boundaries to 0.
+          
+        Returns:
+            None
+        """  
             
         for reach in self.reaches.keys():
             
@@ -253,7 +377,16 @@ class river_Network:
 
 
     def update_gw_Heads(self,sim,modflow_time):
+        """
+        Updates groundwater heads in the network.
         
+        Parameters:
+            sim: Simulation object.
+            modflow_time: Time value for MODFLOW output.
+        
+        Returns:
+            None
+        """
         head = sim.get_model().output.head().get_data(totim = modflow_time)[0][0]
         for reach in self.reaches.keys():
             gw_cell = self.reaches[reach].reach_cell
@@ -261,7 +394,12 @@ class river_Network:
             self.reaches[reach].hgw = head[gw_cell]    
             
     def calculate_RSME(self):
+        """
+        Calculates Root Mean Squared Errors for various variables.
         
+        Returns:
+            None
+        """
         rsme_hriv = []
         rsme_hgw =[]
         rsme_qout = []
@@ -279,6 +417,12 @@ class river_Network:
         self.rsme_qgwf = sum(rsme_qgwf)/len(rsme_qgwf)
         
     def calculate_Water_Balance(self):
+        """
+        Calculates total inflow and outflow for water balance.
+        
+        Returns:
+            None
+        """
         qgwf =[]
         qout = []
         for reach in self.reaches.keys():
@@ -287,21 +431,67 @@ class river_Network:
                 self.qout_total = self.qout_total + self.reaches[reach].qout
      
     def add_Boundaries(self, inflow_dict):
+        """
+        Adds inflow boundaries to the network.
+        
+        Parameters:
+            inflow_dict (dict): Dictionary of inflow values keyed by reach identifiers.
+        
+        Returns:
+            None
+        """
         for inflow_ID in inflow_dict:
             self.qin_total = self.qin_total + inflow_dict[inflow_ID]
             self.reaches[inflow_ID].qin.append(inflow_dict[inflow_ID])
             self.reaches[inflow_ID].is_boundary = True
             
     def add_Reach_in_Boundaries(self, boundary_cells):
+        """
+        Flags reaches within boundary cells.
+        
+        Parameters:
+            boundary_cells (list): List of boundary cell IDs.
+        
+        Returns:
+            None
+        """
+        
         for reach in self.reaches.keys():
             reach_cell = self.reaches[reach].reach_cell
             if reach_cell in boundary_cells:
                 self.reaches[reach].is_in_boundary = True
 
 class time_Manager:
+    """
+    Manages time-related information for a MODFLOW simulation.
     
+    Parameters:
+        sim: MODFLOW simulation object.
+    
+    Attributes:
+        modflow_times (list): List of lists containing MODFLOW stress period times.
+        modflow_time_steps (list): List of lists containing MODFLOW stress period time steps.
+        modflow_stperiod_len (list): List of MODFLOW stress period lengths.
+        modflow_times_seconds (list): List of lists containing stress period times converted to seconds.
+        modflow_time_steps_seconds (list): List of lists containing stress period time steps converted to seconds.
+        gw_units (str): Groundwater time units from the simulation.
+        modflow_stperiods (list): List of MODFLOW stress period indices.
+    
+    Methods:
+        convert_Time_to_Seconds(self, unit, value): Converts a time value from specified unit to seconds.
+        convert_from_Seconds(self, unit, value): Converts a time value from seconds to specified unit.
+    
+    """
     def __init__(self, sim):
+        """
+        Initializes the time_Manager object.
 
+        Parameters:
+            sim: MODFLOW simulation object.
+
+        Returns:
+            None
+        """
         modflow_time_info = sim.get_package("tdis").blocks["perioddata"].datasets['perioddata'].get_data()
         self.modflow_times = []
         self.modflow_time_steps = []
@@ -365,7 +555,16 @@ class time_Manager:
             self.modflow_times_seconds.append(times_sec)
             
     def convert_Time_to_Seconds(self,unit, value):
+        """
+        Converts a time value from specified unit to seconds.
         
+        Parameters:
+            unit (str): Time unit to be converted from.
+            value (float): Time value to be converted.
+        
+        Returns:
+            float: Time value converted to seconds.
+        """
         if  unit == "years":
             value_converted = value*365*24*60*60
             
@@ -387,7 +586,16 @@ class time_Manager:
         return value_converted
     
     def convert_from_Seconds(self, unit,value):
+        """
+        Converts a time value from seconds to specified unit.
         
+        Parameters:
+            unit (str): Time unit to be converted to.
+            value (float): Time value to be converted.
+        
+        Returns:
+            float: Time value converted from seconds to specified unit.
+        """
         if  unit == "years":
             value_converted = value/(365*24*60*60)
             
@@ -410,8 +618,49 @@ class time_Manager:
 
 
 class results_Manager:
+    """
+    Manages and exports simulation results.
     
+    Parameters:
+        modflow_stperiods (list): List of MODFLOW stress period indices.
+        modflow_times (list): List of lists containing MODFLOW stress period times.
+        num_cells (int): Number of cells in the simulation.
+        result_path (str): Path to save the results.
+    
+    Attributes:
+        qin_noleak (list): List of inflow values without leakage.
+        hriv_noleak (list): List of river stage values without leakage.
+        hgw_noleak (list): List of groundwater head values without leakage.
+        qout_noleak (list): List of outflow values without leakage.
+        qgwf_noleak (list): List of groundwater flow values without leakage.
+        water_balance (dict): Dictionary tracking water balance for each stress period.
+        num_cells (int): Number of cells in the simulation.
+        results_dict (dict): Dictionary containing simulation results.
+        results_dict_prev (dict): Dictionary containing previous iteration simulation results.
+        result_path (str): Path to save the results.
+    
+    Methods:
+        add_no_Leak_Network(self, river_Network): Adds network results without leakage.
+        export_Data_csv(self, prjct_name, river_Network): Exports simulation results as CSV files.
+        export_Data_vtu(self, mesh, prjct_name): Exports simulation results as VTK (VTU) files.
+        add_Initial_Stage(self, river_stage_initial): Adds initial river stage data.
+        update_qLeak(self, Stress_Periods, qleak_list): Updates leakage flow data.
+        update_head(self, Stress_Periods, gw_head_list): Updates groundwater head data.
+        update_stage(self, Stress_Periods, river_stage_list): Updates river stage data.
+    """
     def __init__(self,modflow_stperiods,modflow_times, num_cells,result_path): 
+        """
+        Initializes the results_Manager object.
+        
+        Parameters:
+            modflow_stperiods (list): List of MODFLOW stress period indices.
+            modflow_times (list): List of lists containing MODFLOW stress period times.
+            num_cells (int): Number of cells in the simulation.
+            result_path (str): Path to save the results.
+        
+        Returns:
+            None
+        """
         
         self.qin_noleak = []
         self.hriv_noleak = []
@@ -460,6 +709,15 @@ class results_Manager:
 
             
     def add_no_Leak_Network(self, river_Network):
+        """
+        Adds network results without leakage.
+        
+        Parameters:
+            river_Network: river_Network object containing network data.
+        
+        Returns:
+            None
+        """
         qin_noleak = np.zeros(self.num_cells)
         hriv_noleak = np.zeros(self.num_cells)
         qout_noleak = np.zeros(self.num_cells)
@@ -473,6 +731,16 @@ class results_Manager:
         self.qout_noleak = qout_noleak
     
     def export_Data_csv(self,prjct_name,river_Network):
+        """
+        Exports simulation results as CSV files.
+        
+        Parameters:
+            prjct_name (str): Name of the project.
+            river_Network: river_Network object containing network data.
+        
+        Returns:
+            None
+        """
         reach_ID_list = ["No_reach"] * self.num_cells
         for reach in river_Network.reaches.keys():
             reach_ID_list[river_Network.reaches[reach].reach_cell] = river_Network.reaches[reach].reach_id+1
@@ -519,7 +787,16 @@ class results_Manager:
                 result_df.to_csv(os.path.join(self.result_path,csv_name))
 
     def export_Data_vtu(self,mesh,prjct_name):
+        """
+        Exports simulation results as VTK (VTU) files.
         
+        Parameters:
+            mesh: Mesh object containing simulation mesh data.
+            prjct_name (str): Name of the project.
+        
+        Returns:
+            None
+        """
         all_results = mesh.copy()
         for stress_data in self.results_dict:   
             data_types = self.results_dict[stress_data]
@@ -555,13 +832,52 @@ class results_Manager:
 
             
     def add_Initial_Stage(self, river_stage_initial):
+        """
+        Adds initial river stage data.
+        
+        Parameters:
+            river_stage_initial: Initial river stage data.
+        
+        Returns:
+            None
+        """
         self.river_stage_initial  = {}
         
     def update_qLeak(self, Stress_Periods, qleak_list):
+        """
+        Updates leakage flow data.
+        
+        Parameters:
+            Stress_Periods: Stress period index.
+            qleak_list (list): Leakage flow data.
+        
+        Returns:
+            None
+        """
         self.qleak[Stress_Periods] = qleak_list
         
     def update_head(self, Stress_Periods, gw_head_list):
+        """
+        Updates groundwater head data.
+        
+        Parameters:
+            Stress_Periods: Stress period index.
+            gw_head_list (list): Groundwater head data.
+        
+        Returns:
+            None
+        """
         self.gw_head[Stress_Periods] = gw_head_list
         
     def update_stage(self, Stress_Periods, river_stage_list):
+        """
+        Updates river stage data.
+        
+        Parameters:
+            Stress_Periods: Stress period index.
+            river_stage_list (list): River stage data.
+        
+        Returns:
+            None
+        """
         self.river_stage[Stress_Periods] = river_stage_list
