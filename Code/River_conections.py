@@ -8,7 +8,21 @@ import os
 import geopandas as gpd
 
 def river_Conections(shapefile_Path,crs):
+    """
+    Extract river connections from a shapefile.
     
+    This function extracts river connections from a shapefile containing river geometries reaches and node coordinates.
+    It generates a dictionary indicating which reaches are connected to each other upstream and downstream.
+    
+    Parameters:
+        shapefile_Path (str): Path to the shapefile containing reach geometries and node coordinates.
+        crs (str or dict): Coordinate reference system of the shapefile.
+    
+    Returns:
+        dict: A dictionary representing river connections with 'in' and 'out' keys for each node.
+            The 'in' key lists reach that flow into the specified reach.
+            The 'out' key lists reach that the specified reach flows into.
+    """
     conections_dict = {}
     shapefile = gpd.read_file(shapefile_Path,crs = crs)
     reaches = []

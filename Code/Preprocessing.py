@@ -14,7 +14,20 @@ import River_conections as rvrCon
 import dsvFunctions as dsvf
 
 def triangleMesh_to_Shapefile(tri,fileName,crs):
+    """
+    Convert a triangle mesh to a shapefile.
     
+    This function converts a triangle mesh, represented by vertices and cell information,
+    into a shapefile containing polygons that represent the triangles of the mesh.
+    
+    Parameters:
+        tri (dict): A dictionary containing mesh information including vertices and cell2d.
+        fileName (str): Path to the output shapefile.
+        crs (str or dict): Coordinate reference system (CRS) of the shapefile.
+    
+    Returns:
+        None
+    """
     vertices = tri["vertices"]
     cell2d = tri["cells2d"] 
     vertices = tri["vertices"]
@@ -31,6 +44,18 @@ def triangleMesh_to_Shapefile(tri,fileName,crs):
     poly_df.to_file(fileName,driver='ESRI Shapefile')
 
 def generate_Empty_Modflow_Model(exe_path,sim_ws):
+    """
+    Generate an empty MODFLOW model.
+    
+    This function creates an empty MODFLOW model with a single layer and a specified simulation workspace.
+    
+    Parameters:
+        exe_path (str): Path to the MODFLOW executable.
+        sim_ws (str): Path to the simulation workspace where model files will be saved.
+    
+    Returns:
+        gwf (flopy.modflow.Modflow): An empty MODFLOW groundwater flow model object.
+    """
     
     name = 'mf'
     sim = flopy.mf6.MFSimulation(sim_name=name, version='mfusg',
@@ -49,6 +74,21 @@ def generate_Empty_Modflow_Model(exe_path,sim_ws):
     return gwf
 
 def create_Connection_df(connection_data,div_csv_path):
+    
+    """
+    Create a DataFrame describing connections between main and diversion reaches.
+    
+    This function takes connection data in the form of a dictionary and generates a DataFrame
+    to describe the connections between main and diversion reaches. It identifies diversion
+    reaches, their corresponding out_reaches, reach types, and diversion flow rates.
+    
+    Parameters:
+        connection_data (dict): Dictionary containing connection information for each reach.
+        div_csv_path (str): Path to save the generated CSV file.
+    
+    Returns:
+        None
+    """
     div_reaches = []
     out_reaches = []
     #Reach type must be Main or diversion
@@ -72,6 +112,20 @@ def create_Connection_df(connection_data,div_csv_path):
         df.to_csv(div_csv_path)
     
 def geoJson_to_Pandas(geoJsonPath,geoJsonName):
+    
+    """
+    Convert a GeoJSON file to a shapefile using GeoPandas.
+    
+    This function reads a GeoJSON file, converts it to a GeoDataFrame using GeoPandas, and then
+    exports the GeoDataFrame as a shapefile.
+    
+    Parameters:
+        geoJsonPath (str): Path to the directory containing the GeoJSON file.
+        geoJsonName (str): Name of the GeoJSON file (without extension).
+    
+    Returns:
+        None
+    """
     gdf = gpd.read_file(geoJsonPath+chr(47)+geoJsonName)
     gdf.to_file(geoJsonPath+chr(47)+geoJsonName+'.shp')
 
@@ -80,7 +134,22 @@ def geoJson_to_Pandas(geoJsonPath,geoJsonName):
 Data preprocessing
 '''
 def vtu_to_shapefile(ws,vtu_mesh_path,shp_name,crs):
+    """
+    Convert a VTK unstructured grid mesh to a shapefile.
     
+    This function takes a VTK unstructured grid mesh in VTU format and converts it
+    into a shapefile containing polygons that represent the mesh elements.
+    
+    Parameters:
+        ws (str): Working directory where the shapefile will be saved.
+        vtu_mesh_path (str): Path to the VTU unstructured grid mesh file.
+        shp_name (str): Name of the shapefile to be created.
+        crs (str): Coordinate Reference System (CRS) of the shapefile.
+    
+    Returns:
+        None
+    """
+        
     os.listdir(ws)
     
     if  "preprocess_files" not in os.listdir(ws):
@@ -95,7 +164,25 @@ def vtu_to_shapefile(ws,vtu_mesh_path,shp_name,crs):
 
 #Input Modflow exe path
 #Project directory (different from modflow ws)
-def river_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_name, crs, write_sfr = False):
+def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_name, crs, write_sfr = False):
+    """
+    Assign reaches to the grid cells and export the results.
+    
+    This function assigns river data from the provided shapefile to the grid cells and exports the
+    assigned rivers as shapefiles and dataframes for further processing.
+    
+    Parameters:
+        exe_path (str): Path to the MODFLOW executable.
+        ws (str): Working directory where the files will be saved.
+        grid_shapefile (str): Path to the shapefile containing grid cell information.
+        river_shape_file (str): Path to the shapefile containing river data.
+        project_name (str): Name of the project or dataset.
+        crs (str): Coordinate Reference System (CRS) of the shapefiles.
+        write_sfr (bool, optional): Flag to write SFR package data for MODFLOW. Default is False.
+    
+    Returns:
+        dict: A dictionary containing reaches connections information.
+    """
     
     if  "preprocess_files" not in os.listdir(ws):
         file_path = os.path.join(ws, "preprocess_files")
@@ -122,8 +209,7 @@ def river_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
         crs='epsg:25833'
     )
     
-    #US shapeflie path  D:/Master_Erasmus/Thesis/sfrmaker/examples/meras/flowlines.shp
-    #Synthetic river path D:/Master_Erasmus/Thesis/Germany_River1_v2.shp
+    
     #Assignation of the rivers to the grid cells
     custom_lines = sfrmaker.Lines.from_shapefile(shapefile = river_shape_file,
                                                   id_column='COMID',  # arguments to sfrmaker.Lines.from_shapefile
@@ -138,18 +224,20 @@ def river_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
                                                   crs='epsg:25833',
                                                   )
     
-    #m = flopy.modflow.Modflow.load('shellmound.nam', model_ws='D:/Master_Erasmus/Thesis/sfrmaker/sfrmaker/test/data/shellmound/shellmound')
     #Export the assigned rivers to a shapefile file for post processing
     sfrdata = custom_lines.to_sfr(grid=grd, model=gwf)
     if write_sfr == True:
         sfrdata.write_package(version='mf6',filename='Test2')
         
+    #Grid shapefile with only the cells that contain a reach
     post_process_grid = os.path.join(file_path, project_name+"_grid.shp")
     sfrdata.export_cells(filename=post_process_grid)
     
+    #River shapefile with the river discretization into reaches
     post_process_river = os.path.join(file_path, project_name+"_river.shp")
     sfrdata.export_lines(filename = post_process_river)
     
+    # Dataframe with the attribute table from the post_process_river shapefile
     post_process_df = os.path.join(file_path, project_name+"_df.csv")
     sfr_df = sfrdata.reach_data    
     sfr_df.to_csv(post_process_df)
@@ -160,6 +248,9 @@ def river_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
     create_Connection_df(conect_data,div_csv_path)
     return conect_data
 
+'''
+Example
+'''
 ws ="D:/Master_Erasmus/Thesis/Simple_case"
 crs = 25833
 shp_name = "model_grid.shp"
@@ -176,5 +267,5 @@ river_shape_file = r'D:/Master_Erasmus/Thesis/Simple_case/Simple_net.shp'
 crs = 'epsg:25833'
 project_name = "simple_case"
 
-connect = river_assignation(modfl_exe_path,ws, grid_shap_path,river_shape_file, project_name,crs)
+connect = reach_assignation(modfl_exe_path,ws, grid_shap_path,river_shape_file, project_name,crs)
 
