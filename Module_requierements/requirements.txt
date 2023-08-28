@@ -1,0 +1,6 @@
+flopy==3.3.7
+meshio==5.3.4
+pyvista==0.38.5
+PyYAML==6.0
+sfrmaker==0.10.1
+
