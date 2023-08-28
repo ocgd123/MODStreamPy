@@ -63,9 +63,6 @@ class reach_Section:
         reach_id (int): The identifier of the reach.
         reach_cell: The cell assigned to the reach in the grid.
         manning (float): Manning's roughness coefficient for the reach.
-        cross_section (str): The type of cross-section geometry, e.g., "rectangle".
-        up_elev (float): The elevation at the upstream end of the reach.
-        down_elev (float): The elevation at the downstream end of the reach.
         thickness (float): The thickness of the river section.
         length (float): The length of the river reach.
         conductivity (float): Conductivity of the river bed.
@@ -81,7 +78,6 @@ class reach_Section:
         rbot (float): Elevation of the bottom of the river bed.
         in_reaches (list): List of incoming reach sections.
         out_reaches (list): List of outgoing reach sections.
-        cv_max (float): Maximum cross-sectional area when river stage is known.
         qin (list): List of inflow values.
         hriv (float): River water depth.
         hgw (float): Groundwater head.
@@ -101,9 +97,10 @@ class reach_Section:
         Warning: If the reach doesn't have an assigned grid cell.
     """
         
-    def __init__(self, reach_Name,slope, reach_id,reach_cell,manning, 
-                 cross_section, up_elev, down_elev, thickness, length,
-                 conductivity,rbd_elev,surface_top, conductivity_aquifer,width, diversions= []):
+    def __init__(self, reach_Name,slope, reach_id,
+                 reach_cell,manning, 
+                 thickness, length,
+                 conductivity,rbd_elev,width, diversions= []):
         #Distance of the river bed to the bottom of the cell
         
         #River characteristics
@@ -116,21 +113,13 @@ class reach_Section:
         self.thickness = thickness
         self.length  = length
         self.manning = manning
-        self.cross_section_geometry = cross_section
-        self.up_elev = up_elev
-        self.down_elev = down_elev
         self.in_reaches = []
         self.out_reaches = []
         self.conductivity = conductivity
         self.rbot = rbd_elev - thickness
         self.is_boundary = False
         
-        #Gorundwater cell characteristics
-        self.surface_top = surface_top
-        self.conductivity_aquifer= conductivity_aquifer
-        #cv_max is calulated when the river stage is known
-        self.cv_max = 0
-        
+
         #Calculatted variables
         self.qin = []
         self.hriv = 0
@@ -155,7 +144,7 @@ class reach_Section:
         #To Do: Gates and control
         
         
-        if slope == None or  manning == None or cross_section == None:
+        if slope == None or  manning == None :
             raise Exception("There is no value for a rquiered variable in reach {empty_reach}".format(empty_reach = reach_id))
             
         #Diversion data verifications
@@ -183,9 +172,8 @@ class reach_Section:
         if reach_cell == None:
             warnings.warn("Warning: The reach {empty_reach} has no cell assigned in the grid".format(empty_reach = reach_id))
         
-        if self.cross_section_geometry.lower() == "rectangle":
-            self.width = width
-            self.conductance = (self.width*self.conductivity*self.length)/self.thickness
+        self.width = width
+        self.conductance = (self.width*self.conductivity*self.length)/self.thickness
             
             
         def add_diversions(self,diversion):
@@ -264,11 +252,10 @@ class river_Network:
 
         
     def create_Network(self, name_list,slope_list,reach_id_list,
-                       reach_cell_list, manning_list,cross_section_list,
-                       up_elev_list,down_elev_list,
+                       reach_cell_list,
                        conect_data, length_list, 
-                       thick_list,conductivity_list,rbd_elev_list,
-                       top_elev_list, conductivity_aquifer_list,width_list,
+                       rbd_elev_list,
+                       width_list,riv_hydr_prop,
                        diversion_df = pd.DataFrame()):
         """
         Creates a river network based on provided data.
@@ -285,14 +272,15 @@ class river_Network:
         
         for i in range(0,len(name_list)):
             
+            manning = riv_hydr_prop[name_list[i]]["River properties"]["river_manning"]
+            conductivity = riv_hydr_prop[name_list[i]]["River properties"]["river_conductivity"]
+            thick = riv_hydr_prop[name_list[i]]["River properties"]["river_bed_thickness"]
+            
             reach_section = reach_Section(name_list[i], slope_list[i], 
                                           reach_id_list[i], reach_cell_list[i],
-                                          manning_list[i], cross_section_list[i],
-                                          up_elev_list[i], down_elev_list[i],thick_list[i],
-                                          length_list[i],conductivity_list[i],
+                                          manning,thick,
+                                          length_list[i],conductivity,
                                           rbd_elev_list[i], 
-                                          top_elev_list[i],
-                                          conductivity_aquifer_list[i],
                                           width_list[i])
             
             reach_section.in_reaches = conect_data[reach_id_list[i]+1]["in"]

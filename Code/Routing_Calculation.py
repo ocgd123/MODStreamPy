@@ -43,7 +43,6 @@ def calculate_Network(river_Network, connection_dict):
                 # If the reach has only one outflow and no inflow, calculate and add flows
                 if len(non_calculated_reaches[reach+1]["out"]) == 1 and len(non_calculated_reaches[reach+1 ]["in"]) == 0:
                     q_out, h_out = calculate_Reach(current_reach)
-                    river_Network.reaches[reach].cv_max = calculate_Max_Conductance(current_reach,h_out)
                     river_Network.add_River_flows(reach,q_out,h_out)
                     solved_Reach = solved_Reach + 1
                     solved_reaches.append(reach)
@@ -56,7 +55,6 @@ def calculate_Network(river_Network, connection_dict):
                 else:
                     
                     q_out, h_out = calculate_Initial_Conditions(current_reach)
-                    river_Network.reaches[reach].cv_max = calculate_Max_Conductance(current_reach,h_out)
                     river_Network.add_River_flows(reach,q_out,h_out)
                     solved_Reach = solved_Reach + 1
                     solved_reaches.append(reach)
@@ -76,9 +74,7 @@ def calculate_Network(river_Network, connection_dict):
     return river_Network
     
 
-def calculate_Max_Conductance(current_reach,hout):
-    cv_max = current_reach.length*current_reach.width*current_reach.conductivity_aquifer/(hout-current_reach.rbot)
-    return cv_max
+
 
 def calculate_Initial_Conditions(reach_Section):
     """
@@ -95,28 +91,27 @@ def calculate_Initial_Conditions(reach_Section):
     """
         
     qin = sum(reach_Section.qin)
-    if reach_Section.cross_section_geometry == "rectangle":
         
-        h_down = ((qin*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
-        if h_down == 0 and reach_Section.hgw == 0:
-            qgwfo = 0
-            
-        else:
-            h_stageo = h_down + reach_Section.rbd_elev
-            q_down = qin
+    h_down = ((qin*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
+    if h_down == 0 and reach_Section.hgw == 0:
+        qgwfo = 0
         
-        if h_down == 0 and reach_Section.hgw == 0:
-            qgwf = 0
-            
-        else:
-            h_down = ((q_down*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
-            h_stage = h_down + reach_Section.rbd_elev
+    else:
+        h_stageo = h_down + reach_Section.rbd_elev
+        q_down = qin
+    
+    if h_down == 0 and reach_Section.hgw == 0:
+        qgwf = 0
         
-        if reach_Section.is_in_boundary == False:
-            q_down = qin
-            
-        if reach_Section.is_in_boundary == True:
-            q_down = qin 
+    else:
+        h_down = ((q_down*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
+        h_stage = h_down + reach_Section.rbd_elev
+    
+    if reach_Section.is_in_boundary == False:
+        q_down = qin
+        
+    if reach_Section.is_in_boundary == True:
+        q_down = qin 
         
     return q_down,h_down
 
@@ -133,41 +128,40 @@ def calculate_Reach(reach_Section):
         tuple: A tuple containing the calculated flow (q_down) and stage (h_down).
     """
     qin = sum(reach_Section.qin)
-    if reach_Section.cross_section_geometry == "rectangle":
         
-        h_down = ((qin*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
-        if h_down == 0 and reach_Section.hgw == 0:
-            qgwfo = 0
-            
-        else:
-            
-            h_stageo = h_down + reach_Section.rbd_elev
-            qgwfo = calculate_qL(reach_Section,h_stageo)
-            
-            if qgwfo > qin:
-                qgwfo = qin
-                
-            q_down = qin - qgwfo
+    h_down = ((qin*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
+    if h_down == 0 and reach_Section.hgw == 0:
+        qgwfo = 0
         
-        if h_down == 0 and reach_Section.hgw == 0:
-            qgwf = 0
-            
-        else:
-            h_down = ((q_down*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
-            h_stage = h_down + reach_Section.rbd_elev
-            qgwf = calculate_qL(reach_Section,h_stage)
-            
-            if qgwf > q_down:
-                qgwf = q_down
+    else:
         
-        if reach_Section.is_in_boundary == False:
-            reach_Section.qgwf = qgwf
-            q_down = qin - reach_Section.qgwf
-            
-        if reach_Section.is_in_boundary == True:
-            reach_Section.qgwf = 0
-            q_down = qin - reach_Section.qgwf
+        h_stageo = h_down + reach_Section.rbd_elev
+        qgwfo = calculate_qL(reach_Section,h_stageo)
         
+        if qgwfo > qin:
+            qgwfo = qin
+            
+        q_down = qin - qgwfo
+    
+    if h_down == 0 and reach_Section.hgw == 0:
+        qgwf = 0
+        
+    else:
+        h_down = ((q_down*reach_Section.manning)/(reach_Section.width*reach_Section.slope**0.5))**(3/5)
+        h_stage = h_down + reach_Section.rbd_elev
+        qgwf = calculate_qL(reach_Section,h_stage)
+        
+        if qgwf > q_down:
+            qgwf = q_down
+    
+    if reach_Section.is_in_boundary == False:
+        reach_Section.qgwf = qgwf
+        q_down = qin - reach_Section.qgwf
+        
+    if reach_Section.is_in_boundary == True:
+        reach_Section.qgwf = 0
+        q_down = qin - reach_Section.qgwf
+    
     return q_down,h_down
 
 def calculate_manning(reach_Section,q_n):

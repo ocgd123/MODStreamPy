@@ -12,6 +12,7 @@ from shapely.geometry import Polygon
 import sfrmaker
 import River_conections as rvrCon
 import dsvFunctions as dsvf
+import yaml
 
 def triangleMesh_to_Shapefile(tri,fileName,crs):
     """
@@ -73,7 +74,7 @@ def generate_Empty_Modflow_Model(exe_path,sim_ws):
     bas = flopy.modflow.ModflowBas(gwf, ibound=1)
     return gwf
 
-def create_Connection_df(connection_data,div_csv_path):
+def create_Connection_df(connection_data,div_csv_path,files_yaml):
     
     """
     Create a DataFrame describing connections between main and diversion reaches.
@@ -110,7 +111,10 @@ def create_Connection_df(connection_data,div_csv_path):
         df["reach_type"] = reach_type
         df["q"] = div_q
         df.to_csv(div_csv_path)
-    
+        files_yaml[0]["diversion"] = div_csv_path
+        
+    return files_yaml
+        
 def geoJson_to_Pandas(geoJsonPath,geoJsonName):
     
     """
@@ -162,9 +166,41 @@ def vtu_to_shapefile(ws,vtu_mesh_path,shp_name,crs):
     tri = dsvf.vtk_to_disv(vtu_mesh_path)
     triangleMesh_to_Shapefile(tri,shp_path,crs)
 
+def create_YAML_input_files_dict():
+    yaml_file = [
+        {        
+        "river_sfrmaker_shapefile":"Input",
+        "mesh_vtk_path": "Input",
+        "diversion" : "No_diversion_file_created",
+        "river_sfrmaker_shapefile_csv":"Input",
+        "modflow_model_path" : "Input",
+        "exe_path": "Input",
+        "result_path":"Input"
+        }
+        ]
+    return yaml_file
+    
+def create_YAML_Reaches(river_df,preprocess_path,project_name):
+    data = []
+    for line in range(0,len(river_df)):
+        print(line)
+        reach_dict = {
+        river_df["name"][line]:
+            {
+        "River properties":
+            {
+            "river_conductivity" : "input",
+            "river_manning" : "input",
+            "river_bed_thickness" : "input"
+            }
+            }
+        }
+        data.append(reach_dict)
+    with open(os.path.join(preprocess_path, project_name+"_river_inputs.yaml"), 'w',) as reach_yaml :
+        yaml.dump_all(data,reach_yaml, sort_keys=False)
 #Input Modflow exe path
 #Project directory (different from modflow ws)
-def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_name, crs, write_sfr = False):
+def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_name, crs, vtu_mesh_path,write_sfr = False,):
     """
     Assign reaches to the grid cells and export the results.
     
@@ -193,9 +229,14 @@ def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
     '''
     Data preporcessing
     '''
+    #YAML dictionary with the created files
+    files_yaml = create_YAML_input_files_dict()
     
     #Shape file load
     grd_df2 = gpd.read_file(grid_shapefile)
+    
+    #River shapefile data_frame
+    river_df = gpd.read_file(river_shape_file)
     
     #Crete the MODFLOW model
     gwf = generate_Empty_Modflow_Model(modfl_exe_path,ws)
@@ -209,7 +250,8 @@ def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
         crs='epsg:25833'
     )
     
-    
+    files_yaml[0]["exe_path"] = exe_path
+    files_yaml[0]["mesh_vtk_path"] = vtu_mesh_path
     #Assignation of the rivers to the grid cells
     custom_lines = sfrmaker.Lines.from_shapefile(shapefile = river_shape_file,
                                                   id_column='COMID',  # arguments to sfrmaker.Lines.from_shapefile
@@ -236,17 +278,23 @@ def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
     #River shapefile with the river discretization into reaches
     post_process_river = os.path.join(file_path, project_name+"_river.shp")
     sfrdata.export_lines(filename = post_process_river)
-    
+    files_yaml[0]["river_sfrmaker_shapefile"] = os.path.join(file_path, project_name+"_river.shp")
+
     # Dataframe with the attribute table from the post_process_river shapefile
     post_process_df = os.path.join(file_path, project_name+"_df.csv")
     sfr_df = sfrdata.reach_data    
     sfr_df.to_csv(post_process_df)
-    
+    files_yaml[0]["river_sfrmaker_shapefile_csv"] = os.path.join(file_path, project_name+"_df.csv")
     conect_data = rvrCon.river_Conections(post_process_river, crs)
     
     div_csv_path = os.path.join(file_path, project_name+"_div_df.csv")
-    create_Connection_df(conect_data,div_csv_path)
-    return conect_data
+    files_yaml = create_Connection_df(conect_data,div_csv_path,files_yaml)
+    
+    with open(os.path.join(file_path, project_name+"_input_files.yaml"), 'w',) as files_inputs :
+        yaml.dump_all(files_yaml,files_inputs, sort_keys=False)
+        
+    create_YAML_Reaches(river_df,file_path,project_name)
+    return sfr_df
 
 '''
 Example
@@ -267,5 +315,5 @@ river_shape_file = r'D:/Master_Erasmus/Thesis/Simple_case/Simple_net.shp'
 crs = 'epsg:25833'
 project_name = "simple_case"
 
-connect = reach_assignation(modfl_exe_path,ws, grid_shap_path,river_shape_file, project_name,crs)
+connect = reach_assignation(modfl_exe_path,ws, grid_shap_path,river_shape_file, project_name,crs,vtu_mesh_path)
 
