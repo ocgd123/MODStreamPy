@@ -191,16 +191,7 @@ Routing Creation
 sfr_df = pd.read_csv(sfr_df_path)
 conect_data = rvrCon.river_Conections(river_Conections,crs = crs)
 
-#Model characteristics
-manning = [0.04 for i in range(0,len(sfr_df["name"]))]
-geometry = ["rectangle" for i in range(0,len(sfr_df["name"]))]
-conductivity_list = [0.0001 for i in range(0,len(sfr_df["name"]))]
-rb_elev_list = [2 for i in range(0,len(sfr_df["name"]))]
-thickness = [0.5 for i in range(0,len(sfr_df["name"]))]
-slopes = [0.01 for i in range(0,len(sfr_df["name"]))]
-width = [0.1 for i in range(0,len(sfr_df["name"]))]
-conducivity_aquifer_list = [0.0001 for i in range(0,len(sfr_df["name"]))]
-top_list = [10 for i in range(0,len(sfr_df["name"]))]
+
 
 river_Network = rt_Classes.river_Network()
 
