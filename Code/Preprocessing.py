@@ -13,6 +13,7 @@ import sfrmaker
 import River_conections as rvrCon
 import dsvFunctions as dsvf
 import yaml
+from pathlib import Path
 
 def triangleMesh_to_Shapefile(tri,fileName,crs):
     """
@@ -296,24 +297,46 @@ def reach_assignation(exe_path,ws, grid_shapefile, river_shape_file, project_nam
     create_YAML_Reaches(river_df,file_path,project_name)
     return sfr_df
 
+def read_YAML(path):
+    
+    with open(path, "r") as stream:
+        try:
+            files = yaml.safe_load(stream)
+            return files     
+        
+        except yaml.YAMLError as exc:
+            print(exc)
+
+
 '''
 Example
 '''
-ws ="D:/Master_Erasmus/Thesis/Simple_case"
-crs = 25833
+ws = os.path.join(Path.cwd().parent,"Simple_Case_Example")
+ws_initial_files = os.path.join(Path.cwd().parent,"Simple_Case_Example\Initial_files")
+ws_pre_pros_files = os.path.join(Path.cwd().parent,"Simple_Case_Example\preprocess_files")
+input_path = os.path.join(ws_initial_files,"initial_files_inputs.yml")
+file_inputs = read_YAML(input_path)
+
+
+vtu_mesh_path = os.path.join(ws,"Simple_Case_Example")
+crs = file_inputs["crs"]
 shp_name = "model_grid.shp"
-vtu_mesh_path = r'D:/Master_Erasmus/Thesis/Simple_case/Simple_Grid.vtk'
-vtu_to_shapefile(ws,vtu_mesh_path,shp_name,crs)
+vtu_mesh_path = file_inputs["mesh_vtk_path"]
+
+#Grid shape path
+if file_inputs["has_mesh_shp"]==False:
+    vtu_to_shapefile(ws,vtu_mesh_path,shp_name,crs)
+    
+if file_inputs["has_mesh_shp"]==True:
+    grid_shap_path = file_inputs["mesh_shp_path"]
 
 #Modflow EXE path
-modfl_exe_path = "D:/mf6.4.1/bin/mf6.exe"
-#Grid shape path
-grid_shap_path = r'D:/Master_Erasmus/Thesis/Simple_case/Simple_Grid.shp'
+modfl_exe_path = file_inputs["exe_path"]
+
 #River shape file path
-river_shape_file = r'D:/Master_Erasmus/Thesis/Simple_case/Simple_net.shp'
+river_shape_file = file_inputs["river_shp_path"]
 #sfrmaker requieres to include the espg in the name of the coordinate system
-crs = 'epsg:25833'
-project_name = "simple_case"
+project_name = file_inputs["project_name"]
 
 connect = reach_assignation(modfl_exe_path,ws, grid_shap_path,river_shape_file, project_name,crs,vtu_mesh_path)
 

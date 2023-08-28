@@ -1,5 +1,0 @@
-main:
-  River properties:
-    river_conductivity: 0.0001
-    river_manning: 0.04
-    river_bed_thickness: 0.5
