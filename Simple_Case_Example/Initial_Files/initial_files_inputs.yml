@@ -1,0 +1,7 @@
+project_name: simple_case
+mesh_vtk_path: D:/Master_Erasmus/Thesis/Simple_case/Simple_Grid.vtk
+crs: 25833
+river_shp_path: D:/Master_Erasmus/Thesis/Simple_case/Simple_Net.shp
+exe_path: D:/mf6.4.1/bin/mf6.exe
+has_mesh_shp: True
+mesh_shp_path: D:/Master_Erasmus/Thesis/Simple_case/Simple_Grid.shp
