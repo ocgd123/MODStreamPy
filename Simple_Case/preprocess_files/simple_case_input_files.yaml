@@ -1,0 +1,7 @@
+river_sfrmaker_shapefile: D:/Master_Erasmus/Thesis/Simple_case\preprocess_files\simple_case_river.shp
+mesh_vtk_path: D:/Master_Erasmus/Thesis/Simple_case/Simple_Grid.vtk
+diversion: No_diversion_file_created
+river_sfrmaker_shapefile_csv: D:/Master_Erasmus/Thesis/Simple_case\preprocess_files\simple_case_df.csv
+modflow_model_path: D:/Master_Erasmus/Thesis/Simple_case/SimpleModflow
+exe_path: D:/mf6.4.1/bin/mf6.exe
+result_path: D:/Master_Erasmus/Thesis/Simple_case/Results
